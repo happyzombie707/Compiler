@@ -1,6 +1,6 @@
 import std.range, std.format, std.algorithm, token;
-//1 min 3.3
 
+//scanner for token lists, same as below just tokens instead of chars
 class TokenScanner
 {
     Token[] token;
@@ -35,31 +35,22 @@ class TokenScanner
     }
 }
 
+//string scanner
 class Scanner
 {
 
-    string file;
-    int[] lineLen;
-    int line, column, strPtr;
-    ulong length;
-    bool lastCNewline;
+    string file;                //file contents
+    int[] lineLen;              //keeps track of the length of past lines
+    int line, column, strPtr;   //line, column and current char in string
+    ulong length;               //length
+    bool lastCNewline;          //whether last char was a newline
 
-    public string printLineStack()
-    {
-        string s;
-        int ln = 1;
-        foreach( int i; lineLen )
-        {
-            s ~= format("Line %d: %d\n", ln, i);
-            ln++;
-        }
-        return s;
-    }
 
+    //reset if need to be reused
     public void reset()
     {
         lineLen = [];
-        line = 0; column = 0; strPtr = 0;
+        line = 1; column = 1; strPtr = 0;
         length = file.length;
         lastCNewline = false;
     }
@@ -68,7 +59,7 @@ class Scanner
     {
         return file;
     }
-    
+
     public int getLine()
     {
         return line;
@@ -87,10 +78,9 @@ class Scanner
     public this(string file)
     {
         this.file = file;
-        length = file.length;
-        line = 1; column = 1; strPtr = 0;
-        lastCNewline = false;
+        reset();
     }
+
 
     public char readChar()
     {
@@ -99,7 +89,7 @@ class Scanner
 
     public bool moveNext()
     {
-        //if moving strPtr out of bounds
+        //return false if moving strPtr out of bounds
         if(strPtr >= file.length-1)
             return false;
 
@@ -114,32 +104,32 @@ class Scanner
 
         column++; strPtr++;
 
-        //if current char a newline set last char newline flag to true
+        //if current char is newline set last char newline flag to true
         lastCNewline = (readChar == '\n');
 
         //return true on success
         return true;
     }
 
+
     public bool movePrev()
     {
-
+        //if pointer already at start return false
         if (strPtr == 0)
             return false;
 
+        //decrease current char and column value
         strPtr--; column--;
 
-        lastCNewline = (readChar == '\n');
-
-        if (lastCNewline)
-        {
+        //if newline
+        if (readChar == '\n')
+        {   //new column length = length of previous line
             column = lineLen[lineLen.length -1];
-            lineLen.popBack();
+            lineLen.popBack();//remove current line length from stack
             line--;
         }
 
-
+        //success!
         return true;
     }
-
 }

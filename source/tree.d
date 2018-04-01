@@ -1,21 +1,10 @@
 import token, scanner;
-/*
-read int token
-expect function or variable
-    variable
-        expect = or ;
-            =
-                evaluate up to ; as expression
 
-    function
-        need (
-            can have {type, identifier} for 0 - n
-        need )
-        need {
-            evaluate to } as code
-            no nested functions
+/*
+work in progress, doesn't really do anything atm
 */
 
+//struct for tree nodes
 struct Node
 {
     Op t;
@@ -24,16 +13,13 @@ struct Node
     string data;
 }
 
+//class for tree
 class Tree
 {
     Token[] tokenList;
     TokenScanner scan;
 
-    private Token[] assign(Token t)
-    {
-
-    }
-
+    //needs work tbh
     public void buildTree()
     {
         Token t;
@@ -49,9 +35,10 @@ class Tree
         scan = new TokenScanner(tokenList);
     }
 }
+
+
 /*
-
-
+useful fail
 struct BranchNode
 {
     Op t;

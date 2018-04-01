@@ -1,36 +1,40 @@
 import scanner, token, tree, std.stdio, std.regex;
 
+/*Lexer class - construct list of tokens out of text*/
 class Lexer{
 
+    //scanner and tokenlist
     Scanner scan;
     Token[] tokenList;
 
-
+    /*constructor*/
     this(Scanner s)
     {
         scan = s;
     }
 
+    //return list of tokens
     public Token[] getTokens()
     {
         return tokenList;
     }
 
+    //differentiate character types
     int charType(char c)
     {
         if (c >= '0' && c <= '9')
-            return 0;
+            return 0;   //numbers
         else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
-            return 1;
+            return 1;   //?
         else if (c == ' ' || c == '\t' || c == '\n')
-            return 2;
+            return 2;   //whitespace
         else if (c == '+' || c == '-' || c == '*' || c == '/' || c == '&' || c == '|' || c == '=' || c == '!' || c == '>' || c == '<')
-            return 3;
+            return 3;   //symbols
         else
-            return -1;
+            return -1; //other
     }
 
-
+    //
     private Token parseString()
     {
         char c;
@@ -94,45 +98,50 @@ class Lexer{
         return createToken(Op.ERROR, scan.getInfo ~ "\t reached EOF");
     }
 
+    /*
+    read input file char by char determining the token
+    */
     public void lex()
     {
         bool endOfFile = false;
-
+        //while not eof
         while (!endOfFile)
-        {
+        {   //read a char
             switch(scan.readChar)
             {
-                //Single char Ops
+                //filthy whitespace
                 case ' ':
                 case '\t':
                 case '\n':
                     break;
+                //single char tokens
                 case '{':
-                    tokenList ~= createToken(Op.OPEN_BRACE, null);
+                    tokenList ~= createToken(Op.OPEN_BRACE, null, scan.getLine, scan.getCol);
                     break;
                 case '}':
-                    tokenList ~= createToken(Op.CLOSE_BRACE, null);
+                    tokenList ~= createToken(Op.CLOSE_BRACE, null, scan.getLine, scan.getCol);
                     break;
                 case '(':
-                    tokenList ~= createToken(Op.OPEN_BRACKET, null);
+                    tokenList ~= createToken(Op.OPEN_BRACKET, null, scan.getLine, scan.getCol);
                     break;
                 case ')':
-                    tokenList ~= createToken(Op.CLOSE_BRACKET, null);
+                    tokenList ~= createToken(Op.CLOSE_BRACKET, null, scan.getLine, scan.getCol);
                     break;
                 case ';':
-                    tokenList ~= createToken(Op.SEMICOLON, null);
+                    tokenList ~= createToken(Op.SEMICOLON, null, scan.getLine, scan.getCol);
                     break;
 
-                //Multi char Ops
+                //single & multi char e.g. < and <=
                 case '<':
                     scan.moveNext;
-                    if(scan.readChar == '=')
-                    {
+                    if(scan.readChar == '=')  //if next char is =
+                    {   //then token is <=
                         tokenList ~= createToken(Op.LTE, null);
                     }else{
                         tokenList ~= createToken(Op.LT, null);
                         scan.movePrev;
-                    }
+                        //token is < and need to move scanner back
+                    }//rest largely the same
                     break;
                 case '>':
                     scan.moveNext;
@@ -192,6 +201,7 @@ class Lexer{
                 case '/':
                     tokenList ~= createToken(Op.DIVIDE, null);
                     break;
+                //otherwise read as string and try to process
                 default:
                     tokenList ~= parseString;
                     break;
@@ -202,10 +212,11 @@ class Lexer{
 
     }
 
+    /*probably shouldn't be here*/
     public void createSyntaxTree()
     {
         foreach(Token t ; tokenList)
-            printToken(t);
+            writeln(tokenString(t));
     }
 
 }

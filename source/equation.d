@@ -2,9 +2,9 @@ import scanner, token;
 import std.conv, std.stdio, std.array, std.regex, std.algorithm;
 import core.memory;
 
-Token t;
+Token t;//?
 
-
+//experiment
 int[Op] opLength;
 int[Op] opPrecedence;
 void init()
@@ -23,6 +23,10 @@ void init()
     opPrecedence[Op.EXP] = 4;
 }
 
+/*
+    tree test with pointers
+    may merge tree.d and this to make the AST, rename parser.d
+*/
 class EquationTree{
     struct Node{
         Op o;
@@ -45,6 +49,7 @@ class EquationTree{
 
 }
 
+/*utility funcitons, might move*/
 int charValue(char c)
 {
     if(c > 47 && c < 58)
@@ -96,6 +101,7 @@ int parseNum(string toParse)
     return parseValue(value, base);
 }
 
+//need to move to token.d
 public int getPrecedence(Token t)
 {
     return opPrecedence[t.t];
@@ -122,121 +128,122 @@ public bool isNumber(Token t)
     return (t.t == Op.NUMBER);
 }
 
-
+/*
+    equation class
+    uses shunting yard algorithm to convert expressions to RPN
+*/
 class Equation
 {
+    //first evaluate brackets and separate them by depth leaving a placeholder  - parse
+    //convert the separate expression to RPN                                    - convertRPN
+    //collapse the list of expressions back into a single expression            - collapse
 
-    string[] sumList;
-    private Token[][] tokenList;
+    //2d token list, stores tokens in rows, used a bit like a queue
+    private Token[][] tokenQueue;
     TokenScanner scan;
 
-    public Token[] fillJumps()
+    //return a single list with all the brackets merged
+    public Token[] collapse()
     {
-        Token t;
-        Token[] tL;
-        int d = 0;
-        int nearestSub = -1;
-        do
+
+        Token t;        //current token
+        Token[] tL;     //current row of tokens
+        int d = 0;      //depth
+
+        do//while there is more than 1 list of tokens in the stack
         {
-            tL = tokenList[d];
-            for(int i = 0; i < tL.length; i++)
+            tL = tokenQueue[d]; //current list = queue at depth (starts at front)
+            for(int i = 0; i < tL.length; i++)//for each token in the list
             {
                 t = tL[i];
+                //if token is expression placeholder
                 if (t.t == Op.EXP)
-                {
-                    tL = tL[0..i] ~ tokenList[0] ~ tL[i+1..$];
-                    tokenList.popFront;
+                {   //pop front of queue and insert in current expression
+                    tL = tL[0..i] ~ tokenQueue[0] ~ tL[i+1..$];
+                    tokenQueue.popFront;
                     d--;
                 }
-
             }
-            tokenList[d] = tL;
+            //if expression were merged insert new expression into queue at new depth
+            //if they weren't it just adds the same list back into the same location on the queue
+            tokenQueue[d] = tL;
             d++;
-        }while(tokenList[].length > 1);
-        return tokenList[0];
+        }while(tokenQueue[].length > 1);
+
+        //return first element of the token queue (final expression)
+        return tokenQueue[0];
     }
 
-    public Token[] createRPN(Token[] input)
+    //convert list of tokens to a list of RPN tokens
+    public Token[] convertRPN(Token[] input)
     {
 
-        Token t;
-        //Token[] input = tokenList[0];
+        Token t;    //holder
 
-        scan = new TokenScanner(input);
+        scan = new TokenScanner(input); //scanner
 
+        //stacks to hold outputs and operators to put on the output
         Token[] outputStack;
         Token[] operatorStack;
 
-        do
+        do  //while tokens available
         {
+            //read
             t = scan.readToken;
 
+            //if token is a number put on output stack
             if(isNumber(t))
             {
                 outputStack ~= t;
             }
             else
             {
-
-                //if new less than top or top same but left assoc
+                //push value on stack if empty
                 if(operatorStack.length <= 0)
                 {
                     operatorStack ~= t;
                 }
-                else
+                else//if not empty
                 {
-                    //writeln("-----\n"~newOp);
-                    //writeln(oldOp~"\n-----");
-                    while(operatorStack.length > 0){
-                        Token oldT = operatorStack[$-1];
+                    //while tokens in operator stack
+                    while(operatorStack.length > 0)
+                    {
+                        Token oldT = operatorStack[$-1]; //get last token on stack
 
+                        //if old token has a higher precedence
                         if(getPrecedence(t) < getPrecedence(oldT))
                         {
-                            //writeln("new < old, popping");
+                            //put old token on output stack
                             outputStack ~= oldT;
                             operatorStack.popBack;
-                            continue;
+                            continue; //next loop
+                        //if old token has equal precedence and is left associative
                         }else if(getPrecedence(t) == getPrecedence(oldT) && leftAssoc(t))
                         {
-                            //writeln("new = old but rA, popping");
+                            //as above
                             outputStack ~= oldT;
                             operatorStack.popBack;
                             continue;
-                        }else{
-                            break;
                         }
-                    }
+                        //if neither of the above
+                        break;
+                    }//add to operator stack
                     operatorStack ~= t;
                 }
             }
 
-        //writeln("AFTER "~c);
         }while(scan.moveNext);
+        //when parsing the tokens is done, push any remaining operators to the output stack
         while(operatorStack.length > 0)
         {
             outputStack ~= operatorStack[$-1];
             operatorStack.popBack;
         }
 
-        return outputStack;//outputStack.join(" ");
+        return outputStack;
     }
 
-
-    /*
-    TODO
-    get the createrpn function to read from the processed list of Tokens
-    returning the processed function to the array
-
-    add link swapping, so when the parser sees an expression tag it knows to
-    (hopefully) plug in the already processed equation at the top of the queue,
-    pop old one when inserted
-
-    verify it's all good
-
-    look into creating a variable table and a function table
-    create AST
-    */
-
+    /*split expressions based on brackets, leaves a placeholder token behind*/
     public void parse()
     {
         //writef("\n%d: ", depth);
@@ -257,7 +264,7 @@ class Equation
                 case Op.CLOSE_BRACKET:
                     //if(depth == 0)
                         //write("syntax error.");
-                    tokenList ~= text;
+                    tokenQueue ~= text;
                     return;
 
                 case Op.PLUS: goto default;
@@ -269,29 +276,30 @@ class Equation
                     break;
             }
         }while(scan.moveNext);
-        tokenList ~= text;
+        tokenQueue ~= text;
     }
 
+    //workaround, need to change something
     public void rpn()
     {
-        for(int i = 0; i < tokenList.length; i++)
+        for(int i = 0; i < tokenQueue.length; i++)
         {
-            tokenList[i] = createRPN(tokenList[i]);
+            tokenQueue[i] = convertRPN(tokenQueue[i]);
         }
 
     }
-
+    //same
     public void fill()
     {
-        foreach(Token t ; fillJumps)
+        foreach(Token t ; collapse)
         {
-            printString(t);
+            writeln(tokenString(t));
         }
     }
-
+    //constrictor
     public this(Token[] tokens)
     {
-        //tokenList = tokens;
+        //tokenQueue = tokens;
         init();
         scan = new TokenScanner(tokens);
     }

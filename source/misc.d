@@ -1,4 +1,5 @@
-/*char cmd;
+/*
+tedious manual scanner, saved for potential use
 string arg;
 do
 {
